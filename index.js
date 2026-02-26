@@ -5,6 +5,7 @@ const cors = require("cors")
 const connectDB = require("./config/db")
 const userController = require("./controllers/user.controller.js")
 const juiceController = require("./controllers/juice.controller.js")
+const cartController = require("./controllers/cart.controller.js")
 const auth = require("./middlewares/auth.middleware.js")
 const app = express()
 
@@ -17,6 +18,7 @@ app.use(cors())
 // routes
 app.use("/users" ,userController)
 app.use("/juices" , juiceController)
+app.use("/cart" , cartController)
 
 
 // privateData
