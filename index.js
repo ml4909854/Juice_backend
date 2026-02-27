@@ -16,16 +16,20 @@ const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(helmet())
-app.use(cors())
+app.use(cors({
+    origin:process.env.FRONTEND_URL,
+    methods:["GET" , "PUT" , "PATCH" , "POST" , "DELETE"],
+    credentials:true
+}))
 
 
 // routes
-app.use("/user" ,userController)
-app.use("/juice" , juiceController)
+app.use("/users" ,userController)
+app.use("/juices" , juiceController)
 app.use("/cart" , cartController)
-app.use("/order" , orderController)
-app.use("/review" , reviewController)
-app.use("/wishlist" , wishlistController)
+app.use("/orders" , orderController)
+app.use("/reviews" , reviewController)
+app.use("/wishlists" , wishlistController)
 app.use("/admin" , adminController)
 
 

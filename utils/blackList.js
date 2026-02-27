@@ -1,4 +1,2 @@
-
-
 const blackList = new Set()
-module.exports = blackList
+module.exports = blackList 

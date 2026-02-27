@@ -12,7 +12,7 @@ const updateRating = async (juiceId)=>{
        count:{ $sum:1 }
      }
    }
- ]);
+ ])
 
  await Juice.findByIdAndUpdate(juiceId,{
    averageRating: stats[0]?.avg || 0,
@@ -21,4 +21,4 @@ const updateRating = async (juiceId)=>{
 
 };
 
-module.exports = updateRating;
+module.exports = updateRating; updateRating.js
