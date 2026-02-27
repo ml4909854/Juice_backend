@@ -77,9 +77,16 @@ router.get("/", auth, async (req, res) => {
 
 
 // update cart //
-router.put("/quantity", auth, async (req, res) => {
+router.patch("/update/:id", auth, async (req, res) => {
   try {
-    const { juiceId, action } = req.body;
+    const juiceId = req.params.id;
+    const { action } = req.body;   // ✅ YOU MISSED THIS
+
+    // check juice exists
+    const existingJuice = await Juice.findById(juiceId);
+    if (!existingJuice) {
+      return res.status(404).json({ message: "Juice not found!" });
+    }
 
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart)
@@ -90,14 +97,14 @@ router.put("/quantity", auth, async (req, res) => {
     );
 
     if (!item)
-      return res.status(404).json({ message: "Item not found" });
+      return res.status(404).json({ message: "Item not found in cart" });
 
-    // Increase quantity
+    // INCREASE
     if (action === "increase") {
       item.quantity += 1;
     }
 
-    // Decrease quantity
+    // DECREASE
     else if (action === "decrease") {
       item.quantity -= 1;
 
@@ -107,20 +114,24 @@ router.put("/quantity", auth, async (req, res) => {
           i => i.juice.toString() !== juiceId
         );
       }
-    } else {
+    }
+
+    else {
       return res.status(400).json({ message: "Invalid action" });
     }
 
     calculateTotals(cart);
     await cart.save();
 
-    res.status(200).json({ message: "Cart updated", cart });
+    res.status(200).json({
+      message: "Cart updated successfully",
+      cart
+    });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // delete item
 router.delete("/remove/:juiceId", auth, async (req, res) => {
