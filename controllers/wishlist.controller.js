@@ -5,37 +5,47 @@ const Wishlist = require("../models/wishlist.model");
 const Juice = require("../models/juice.models");
 const auth = require("../middlewares/auth.middleware");
 
-
 // ================= ADD TO WISHLIST =================
 router.post("/add/:juiceId", auth, async (req, res) => {
   try {
     const juiceId = req.params.juiceId;
+    const userId = req.user._id;
 
     // check juice exists
     const juice = await Juice.findById(juiceId);
     if (!juice)
       return res.status(404).json({ message: "Juice not found" });
 
-    // check already added
-    const exists = await Wishlist.findOne({
-      user: req.user._id,
-      juice: juiceId
-    });
+    // Find user's wishlist or create new one
+    let wishlist = await Wishlist.findOne({ user: userId });
 
-    if (exists)
-      return res.status(400).json({
-        message: "Already in wishlist"
+    if (!wishlist) {
+      // Create new wishlist with first item
+      wishlist = new Wishlist({
+        user: userId,
+        items: [{ juice: juiceId }]
       });
+    } else {
+      // Check if juice already in wishlist
+      const exists = wishlist.items.some(item => 
+        item.juice.toString() === juiceId
+      );
 
-    // create
-    const item = await Wishlist.create({
-      user: req.user._id,
-      juice: juiceId
-    });
+      if (exists) {
+        return res.status(400).json({ 
+          message: "Already in wishlist" 
+        });
+      }
+
+      // Add new juice to items array
+      wishlist.items.push({ juice: juiceId });
+    }
+
+    await wishlist.save();
 
     res.status(201).json({
       message: "Added to wishlist",
-      item
+      wishlist
     });
 
   } catch (err) {
@@ -43,20 +53,54 @@ router.post("/add/:juiceId", auth, async (req, res) => {
   }
 });
 
+// ================= REMOVE FROM WISHLIST =================
+router.delete("/:juiceId", auth, async (req, res) => {
+  try {
+    const juiceId = req.params.juiceId;
+    const userId = req.user._id;
 
+    const wishlist = await Wishlist.findOne({ user: userId });
+
+    if (!wishlist) {
+      return res.status(404).json({ 
+        message: "Wishlist not found" 
+      });
+    }
+
+    // Remove juice from items array
+    wishlist.items = wishlist.items.filter(
+      item => item.juice.toString() !== juiceId
+    );
+
+    await wishlist.save();
+
+    res.json({
+      message: "Removed from wishlist",
+      wishlist
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ================= GET USER WISHLIST =================
 router.get("/", auth, async (req, res) => {
   try {
-    const list = await Wishlist.find({
-      user: req.user._id
-    })
-      .populate("juice")
-      .sort({ createdAt: -1 });
+    const wishlist = await Wishlist.findOne({ 
+      user: req.user._id 
+    }).populate("items.juice");
+
+    if (!wishlist) {
+      return res.json({ 
+        count: 0, 
+        wishlist: [] 
+      });
+    }
 
     res.json({
-      count: list.length,
-      wishlist: list
+      count: wishlist.items.length,
+      wishlist: wishlist.items
     });
 
   } catch (err) {
