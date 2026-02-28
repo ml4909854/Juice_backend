@@ -127,6 +127,12 @@ router.post("/buy-now", auth, async (req, res) => {
 // =========================================
 // USER ORDER HISTORY (PAGINATION + FILTER)
 // =========================================
+// =========================================
+// USER ORDER HISTORY (PAGINATION + FILTER)
+// =========================================
+// =========================================
+// USER ORDER HISTORY (PAGINATION + FILTER)
+// =========================================
 router.get("/my-orders", auth, async (req, res) => {
   try {
     const { page = 1, limit = 5, status } = req.query;
@@ -135,7 +141,11 @@ router.get("/my-orders", auth, async (req, res) => {
     if (status) filter.orderStatus = status;
 
     const orders = await Order.find(filter)
-      .populate("items.juiceId", "name price images")
+      // ✅ Populate juice with name, price, images
+      .populate({
+        path: 'items.juice',
+        select: 'name price images category'
+      })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
@@ -150,11 +160,10 @@ router.get("/my-orders", auth, async (req, res) => {
     });
 
   } catch (err) {
+    console.error("Order fetch error:", err);
     res.status(500).json({ error: err.message });
   }
 });
-
-
 
 // =========================================
 // GET SINGLE ORDER
@@ -162,12 +171,15 @@ router.get("/my-orders", auth, async (req, res) => {
 router.get("/:id", auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate("items.juiceId", "name price images");
+      // ✅ Populate juice with all fields
+      .populate({
+        path: 'items.juice',
+        select: 'name price images category description'
+      });
 
     if (!order)
       return res.status(404).json({ message: "Order not found" });
 
-    // prevent viewing others order
     if (
       order.user.toString() !== req.user._id.toString() &&
       req.user.role !== ROLES.ADMIN
@@ -178,11 +190,10 @@ router.get("/:id", auth, async (req, res) => {
     res.status(200).json(order);
 
   } catch (err) {
+    console.error("Order fetch error:", err);
     res.status(500).json({ error: err.message });
   }
 });
-
-
 
 // =========================================
 // CANCEL ORDER (USER)

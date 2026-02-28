@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose")
 
 const orderSchema = new mongoose.Schema({
@@ -26,6 +25,13 @@ const orderSchema = new mongoose.Schema({
     city: String,
     state: String,
     pincode: String,
+    phone: String,           // ✅ Added phone number
+    alternatePhone: String,  // ✅ Added alternate phone (optional)
+    addressType: {           // ✅ Added address type
+      type: String,
+      enum: ["home", "work", "other"],
+      default: "home"
+    },
     country: {
       type: String,
       default: "India"
@@ -50,10 +56,25 @@ const orderSchema = new mongoose.Schema({
     default: "placed"
   },
 
+  // Delivery tracking
+  estimatedDelivery: {
+    type: Date,
+    default: () => new Date(+new Date() + 30*60000) // 30 minutes from now
+  },
+  deliveredAt: Date,
+  cancelledAt: Date,
+
+  // Pricing
   totalPrice: Number,
   discount: Number,
-  finalPrice: Number
+  finalPrice: Number,
+  
+  // Coupon applied
+  appliedCoupon: {
+    code: String,
+    discount: Number
+  }
 
 }, { timestamps: true });
 
-module.exports = mongoose.model("Order" , orderSchema)
+module.exports = mongoose.model("Order", orderSchema);
