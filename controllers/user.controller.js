@@ -29,6 +29,7 @@ router.post("/register" , async(req , res)=>{
 })
 
 // ==================== LOGIN ====================
+// ==================== LOGIN ====================
 router.post("/login" , async(req , res)=>{
     try {
         const {email , password} = req.body
@@ -43,7 +44,18 @@ router.post("/login" , async(req , res)=>{
         }
         const ACCESS_KEY = process.env.ACCESS_KEY 
         const token = jwt.sign({ _id:user._id} , ACCESS_KEY , {expiresIn:"1d"})
-        res.status(200).json({message:`${user.username} logged successfully !` , token , userId:user._id})
+        
+        // ✅ Send role in response
+        res.status(200).json({
+            message: `${user.username} logged successfully !`,
+            token,
+            userId: user._id,
+            user: {
+                username: user.username,
+                email: user.email,
+                role: user.role  // 👈 THIS IS IMPORTANT
+            }
+        })
 
     } catch (error) {
         res.status(500).json({message:"logging error...." , error:error})

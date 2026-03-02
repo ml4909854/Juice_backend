@@ -11,35 +11,32 @@ const router = express.Router();
 // =========================================
 // PLACE ORDER FROM CART
 // =========================================
+
 router.post("/place", auth, async (req, res) => {
   try {
     const userId = req.user._id;
-    const { items, address, paymentMethod } = req.body;
+    const { items, address, paymentMethod, totalPrice, discount, finalPrice } = req.body;
 
     if (!items || items.length === 0)
       return res.status(400).json({ message: "Cart is empty" });
 
-    let total = 0;
-
-    // check stock + calculate total
+    // Validate each item has juiceId
     for (let item of items) {
-      const juice = await Juice.findById(item.juiceId);
+      if (!item.juiceId) {
+        return res.status(400).json({ message: "Item missing juiceId" });
+      }
 
+      const juice = await Juice.findById(item.juiceId);
       if (!juice)
-        return res.status(404).json({ message: "Juice not found" });
+        return res.status(404).json({ message: `Juice not found for item: ${item.name}` });
 
       if (juice.stock < item.quantity)
         return res.status(400).json({
           message: `${juice.name} only ${juice.stock} left in stock`
         });
-
-      total += juice.price * item.quantity;
     }
 
-    const discount = total * 0.10;
-    const final = total - discount;
-
-    // deduct stock
+    // Deduct stock
     for (let item of items) {
       await Juice.findByIdAndUpdate(
         item.juiceId,
@@ -47,24 +44,39 @@ router.post("/place", auth, async (req, res) => {
       );
     }
 
+    // ✅ Create order with proper field names
     const order = await Order.create({
       user: userId,
-      items,
+      items: items.map(item => ({
+        juice: item.juiceId,  // ✅ Use "juice" field name
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        subtotal: item.subtotal || (item.price * item.quantity)
+      })),
       address,
       paymentMethod,
-      totalPrice: total,
-      discount,
-      finalPrice: final,
+      totalPrice: totalPrice || items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+      discount: discount || 0,
+      finalPrice: finalPrice || (totalPrice - discount),
       paymentStatus: "pending",
       orderStatus: "placed"
     });
 
+    // ✅ Populate before sending response
+    const populatedOrder = await Order.findById(order._id)
+      .populate({
+        path: 'items.juice',
+        select: 'name price images category'
+      });
+
     res.status(201).json({
       message: "Order placed successfully",
-      order
+      order: populatedOrder
     });
 
   } catch (err) {
+    console.error("Order placement error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -73,6 +85,8 @@ router.post("/place", auth, async (req, res) => {
 
 // =========================================
 // BUY NOW (DIRECT ORDER)
+// =========================================// =========================================
+// BUY NOW (DIRECT ORDER) - FIXED
 // =========================================
 router.post("/buy-now", auth, async (req, res) => {
   try {
@@ -96,12 +110,15 @@ router.post("/buy-now", auth, async (req, res) => {
     juice.stock -= quantity;
     await juice.save();
 
+    // ✅ FIXED: Use "juice" field name, not "juiceId"
     const order = await Order.create({
       user: userId,
       items: [{
-        juiceId,
-        quantity,
-        price: juice.price
+        juice: juiceId,           // ✅ Changed from juiceId to juice
+        name: juice.name,         // ✅ Added name
+        price: juice.price,
+        quantity: quantity,
+        subtotal: total            // ✅ Added subtotal
       }],
       address,
       paymentMethod,
@@ -112,27 +129,26 @@ router.post("/buy-now", auth, async (req, res) => {
       orderStatus: "placed"
     });
 
+    // ✅ Populate before sending response
+    const populatedOrder = await Order.findById(order._id)
+      .populate({
+        path: 'items.juice',
+        select: 'name price images category'
+      });
+
     res.status(201).json({
       message: "Order placed successfully",
-      order
+      order: populatedOrder
     });
 
   } catch (err) {
+    console.error("Buy now error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 
-
-// =========================================
-// USER ORDER HISTORY (PAGINATION + FILTER)
-// =========================================
-// =========================================
-// USER ORDER HISTORY (PAGINATION + FILTER)
-// =========================================
-// =========================================
-// USER ORDER HISTORY (PAGINATION + FILTER)
-// =========================================
+// my-orders
 router.get("/my-orders", auth, async (req, res) => {
   try {
     const { page = 1, limit = 5, status } = req.query;
