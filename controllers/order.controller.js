@@ -10,23 +10,32 @@ const router = express.Router();
 
 // =========================================
 // PLACE ORDER FROM CART
-// =========================================
+// controllers/order.controller.js - Update both place and buy-now endpoints
 
+// =========================================
+// PLACE ORDER FROM CART - UPDATED
+// =========================================
 router.post("/place", auth, async (req, res) => {
   try {
     const userId = req.user._id;
-    const { items, address, paymentMethod, totalPrice, discount, finalPrice } = req.body;
+    const { items, address, paymentMethod, totalPrice, discount, finalPrice, paymentId, paymentStatus } = req.body;
+
+    console.log("Place order request:", { 
+      paymentMethod, 
+      paymentId, 
+      paymentStatus: paymentStatus || "pending" 
+    });
 
     if (!items || items.length === 0)
       return res.status(400).json({ message: "Cart is empty" });
 
     // Validate each item has juiceId
     for (let item of items) {
-      if (!item.juiceId) {
-        return res.status(400).json({ message: "Item missing juiceId" });
+      if (!item.juice) {
+        return res.status(400).json({ message: "Item missing juice reference" });
       }
 
-      const juice = await Juice.findById(item.juiceId);
+      const juice = await Juice.findById(item.juice);
       if (!juice)
         return res.status(404).json({ message: `Juice not found for item: ${item.name}` });
 
@@ -39,16 +48,28 @@ router.post("/place", auth, async (req, res) => {
     // Deduct stock
     for (let item of items) {
       await Juice.findByIdAndUpdate(
-        item.juiceId,
+        item.juice,
         { $inc: { stock: -item.quantity } }
       );
     }
 
-    // ✅ Create order with proper field names
+    // Determine payment status based on payment method
+    let finalPaymentStatus = "pending";
+    if (paymentMethod !== "cod") {
+      // For online payments, if paymentId exists, mark as paid
+      finalPaymentStatus = paymentId ? "paid" : "pending";
+    }
+    
+    // Override with provided paymentStatus if available (for verified payments)
+    if (paymentStatus) {
+      finalPaymentStatus = paymentStatus;
+    }
+
+    // Create order with proper field names
     const order = await Order.create({
       user: userId,
       items: items.map(item => ({
-        juice: item.juiceId,  // ✅ Use "juice" field name
+        juice: item.juice,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
@@ -56,14 +77,16 @@ router.post("/place", auth, async (req, res) => {
       })),
       address,
       paymentMethod,
+      paymentId: paymentId || null,
+      paymentStatus: finalPaymentStatus, // ✅ Use the determined status
+      orderStatus: "placed",
       totalPrice: totalPrice || items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
       discount: discount || 0,
       finalPrice: finalPrice || (totalPrice - discount),
-      paymentStatus: "pending",
-      orderStatus: "placed"
+      estimatedDelivery: new Date(Date.now() + 30 * 60 * 1000) // 30 minutes from now
     });
 
-    // ✅ Populate before sending response
+    // Populate before sending response
     const populatedOrder = await Order.findById(order._id)
       .populate({
         path: 'items.juice',
@@ -81,17 +104,19 @@ router.post("/place", auth, async (req, res) => {
   }
 });
 
-
-
 // =========================================
-// BUY NOW (DIRECT ORDER)
-// =========================================// =========================================
-// BUY NOW (DIRECT ORDER) - FIXED
+// BUY NOW (DIRECT ORDER) - UPDATED
 // =========================================
 router.post("/buy-now", auth, async (req, res) => {
   try {
     const userId = req.user._id;
-    const { juiceId, quantity, address, paymentMethod } = req.body;
+    const { juiceId, quantity, address, paymentMethod, paymentId, paymentStatus } = req.body;
+
+    console.log("Buy now request:", { 
+      paymentMethod, 
+      paymentId, 
+      paymentStatus: paymentStatus || "pending" 
+    });
 
     const juice = await Juice.findById(juiceId);
     if (!juice)
@@ -103,33 +128,47 @@ router.post("/buy-now", auth, async (req, res) => {
       });
 
     const total = juice.price * quantity;
-    const discount = total * 0.10;
+    const discount = total >= 500 ? total * 0.1 : 0;
     const final = total - discount;
 
     // deduct stock
     juice.stock -= quantity;
     await juice.save();
 
-    // ✅ FIXED: Use "juice" field name, not "juiceId"
+    // Determine payment status based on payment method
+    let finalPaymentStatus = "pending";
+    if (paymentMethod !== "cod") {
+      // For online payments, if paymentId exists, mark as paid
+      finalPaymentStatus = paymentId ? "paid" : "pending";
+    }
+    
+    // Override with provided paymentStatus if available (for verified payments)
+    if (paymentStatus) {
+      finalPaymentStatus = paymentStatus;
+    }
+
+    // Create order
     const order = await Order.create({
       user: userId,
       items: [{
-        juice: juiceId,           // ✅ Changed from juiceId to juice
-        name: juice.name,         // ✅ Added name
+        juice: juiceId,
+        name: juice.name,
         price: juice.price,
         quantity: quantity,
-        subtotal: total            // ✅ Added subtotal
+        subtotal: total
       }],
       address,
       paymentMethod,
+      paymentId: paymentId || null,
+      paymentStatus: finalPaymentStatus, // ✅ Use the determined status
+      orderStatus: "placed",
       totalPrice: total,
       discount,
       finalPrice: final,
-      paymentStatus: "pending",
-      orderStatus: "placed"
+      estimatedDelivery: new Date(Date.now() + 30 * 60 * 1000) // 30 minutes from now
     });
 
-    // ✅ Populate before sending response
+    // Populate before sending response
     const populatedOrder = await Order.findById(order._id)
       .populate({
         path: 'items.juice',
@@ -146,7 +185,6 @@ router.post("/buy-now", auth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
 
 // my-orders
 router.get("/my-orders", auth, async (req, res) => {

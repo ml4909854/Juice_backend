@@ -11,6 +11,7 @@ const reviewController = require("./controllers/review.controller.js")
 const wishlistController = require("./controllers/wishlist.controller.js")
 const adminController = require("./controllers/admin.controller.js")
 const profileController = require("./controllers/profile.controller.js")
+const paymentController = require("./controllers/payment.controller.js")
 const auth = require("./middlewares/auth.middleware.js")
 const app = express()
 
@@ -33,6 +34,7 @@ app.use("/reviews" , reviewController)
 app.use("/wishlists" , wishlistController)
 app.use("/admin" , adminController)
 app.use("/profile" , profileController)
+app.use("/payments"  , paymentController)
 
 // privateData
 app.get("/privateData" , auth , (req , res)=>{
