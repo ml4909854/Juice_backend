@@ -10,6 +10,7 @@ const router = express.Router();
 
 
 // ================= CREATE JUICE =================
+
 router.post(
   "/create",
   auth,
@@ -17,26 +18,43 @@ router.post(
   upload.array("images", 6),
   async (req, res) => {
     try {
-      const { name, category, description, price, stock, ingredients, benefits } = req.body;
-
-      if (!name || !category || !description || !price) {
-        return res.status(400).json({ message: "All required fields must be filled" });
+      // 👇 IMPORTANT: Agar req.body.data hai to JSON parse karo
+      let juiceData = req.body;
+      
+      // Agar "data" field mein JSON bheja hai to use parse karo
+      if (req.body.data) {
+        juiceData = JSON.parse(req.body.data);
       }
 
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ message: "At least one image required" });
+      // Ab fields check karo
+      if (!juiceData.name || !juiceData.category || !juiceData.description || !juiceData.price) {
+        return res.status(400).json({ 
+          message: "All required fields must be filled",
+          received: juiceData // Debug ke liye
+        });
       }
 
-      const imageUrls = req.files.map(file => file.path);
+      // Images handle karo
+      const imageUrls = req.files ? req.files.map(file => file.path) : [];
+
+      // Agar ingredients string hai to parse karo
+      if (juiceData.ingredients && typeof juiceData.ingredients === 'string') {
+        juiceData.ingredients = JSON.parse(juiceData.ingredients);
+      }
+
+      // Agar benefits string hai to parse karo
+      if (juiceData.benefits && typeof juiceData.benefits === 'string') {
+        juiceData.benefits = JSON.parse(juiceData.benefits);
+      }
 
       const juice = new Juice({
-        name,
-        category,
-        description,
-        price,
-        stock,
-        ingredients: ingredients ? JSON.parse(ingredients) : [],
-        benefits: benefits ? JSON.parse(benefits) : [],
+        name: juiceData.name,
+        category: juiceData.category,
+        description: juiceData.description,
+        price: juiceData.price,
+        stock: juiceData.stock || 0,
+        ingredients: juiceData.ingredients || [],
+        benefits: juiceData.benefits || [],
         images: imageUrls
       });
 
@@ -48,11 +66,14 @@ router.post(
       });
 
     } catch (error) {
-      res.status(500).json({ message: "Error creating juice", error: error.message });
+      console.error("Error:", error);
+      res.status(500).json({ 
+        message: "Error creating juice", 
+        error: error.message 
+      });
     }
   }
 );
-
 
 // ================= GET ALL JUICES =================
 router.get("/", async (req, res) => {
