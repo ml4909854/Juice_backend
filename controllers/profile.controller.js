@@ -7,9 +7,7 @@ const auth = require("../middlewares/auth.middleware");
 const upload = require("../middlewares/upload.middleware");
 const cloudinary = require("../utils/cloudinary");
 
-// =========================================
 // GET PROFILE
-// =========================================
 router.get("/", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -49,9 +47,7 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // UPDATE PROFILE
-// =========================================
 router.patch("/", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -87,9 +83,7 @@ router.patch("/", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // UPLOAD AVATAR
-// =========================================
 router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
   try {
     const userId = req.user._id;
@@ -141,9 +135,7 @@ router.post("/avatar", auth, upload.single("avatar"), async (req, res) => {
   }
 });
 
-// =========================================
 // ADD ADDRESS
-// =========================================
 router.post("/addresses", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -182,9 +174,7 @@ router.post("/addresses", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // UPDATE ADDRESS
-// =========================================
 router.patch("/addresses/:addressId", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -231,9 +221,7 @@ router.patch("/addresses/:addressId", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // DELETE ADDRESS
-// =========================================
 router.delete("/addresses/:addressId", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -268,9 +256,7 @@ router.delete("/addresses/:addressId", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // UPDATE PREFERENCES
-// =========================================
 router.patch("/preferences", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -301,9 +287,7 @@ router.patch("/preferences", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // GET PROFILE STATS
-// =========================================
 router.get("/stats", auth, async (req, res) => {
   try {
     const userId = req.user._id;

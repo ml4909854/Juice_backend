@@ -8,13 +8,7 @@ const ROLES = require("../constants/roles.js");
 const router = express.Router();
 
 
-// =========================================
-// PLACE ORDER FROM CART
-// controllers/order.controller.js - Update both place and buy-now endpoints
-
-// =========================================
 // PLACE ORDER FROM CART - UPDATED
-// =========================================
 router.post("/place", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -104,9 +98,7 @@ router.post("/place", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // BUY NOW (DIRECT ORDER) - UPDATED
-// =========================================
 router.post("/buy-now", auth, async (req, res) => {
   try {
     const userId = req.user._id;
@@ -219,9 +211,7 @@ router.get("/my-orders", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // GET SINGLE ORDER
-// =========================================
 router.get("/:id", auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
@@ -249,9 +239,7 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
-// =========================================
 // CANCEL ORDER (USER)
-// =========================================
 router.patch("/cancelOrder/:id", auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -277,9 +265,7 @@ router.patch("/cancelOrder/:id", auth, async (req, res) => {
 
 
 
-// =========================================
 // ADMIN — UPDATE ORDER STATUS
-// =========================================
 router.patch(
   "/orderStatus/:id",
   auth,
@@ -308,9 +294,7 @@ router.patch(
 
 
 
-// =========================================
 // ADMIN — UPDATE PAYMENT STATUS
-// =========================================
 router.patch(
   "/paymentStatus/:id",
   auth,
@@ -338,9 +322,7 @@ router.patch(
 
 
 
-// =========================================
 // ADMIN — GET ALL ORDERS
-// =========================================
 router.get("/admin/all", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const orders = await Order.find()

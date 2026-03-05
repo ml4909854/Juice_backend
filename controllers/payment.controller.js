@@ -11,9 +11,7 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// ==========================================
 // CREATE ORDER
-// ==========================================
 router.post("/create-order", auth, async (req, res) => {
   try {
     const { amount } = req.body;
@@ -47,9 +45,7 @@ router.post("/create-order", auth, async (req, res) => {
   }
 });
 
-// ==========================================
 // VERIFY PAYMENT
-// ==========================================
 router.post("/verify-payment", auth, async (req, res) => {
   try {
     const { 
@@ -89,9 +85,7 @@ router.post("/verify-payment", auth, async (req, res) => {
   }
 });
 
-// ==========================================
 // GET PAYMENT DETAILS (OPTIONAL)
-// ==========================================
 router.get("/payment-details/:paymentId", auth, async (req, res) => {
   try {
     const { paymentId } = req.params;
@@ -114,9 +108,7 @@ router.get("/payment-details/:paymentId", auth, async (req, res) => {
   }
 });
 
-// ==========================================
 // REFUND PAYMENT (OPTIONAL - FOR ADMIN)
-// ==========================================
 router.post("/refund/:paymentId", auth, async (req, res) => {
   try {
     const { paymentId } = req.params;

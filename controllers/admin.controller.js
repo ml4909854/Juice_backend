@@ -12,9 +12,7 @@ const checkRole = require("../middlewares/checkRole.middleware");
 const ROLES = require("../constants/roles");
 
 
-// ==========================================
 // ADMIN DASHBOARD STATS
-// ==========================================
 router.get("/dashboard", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     // Basic counts
@@ -67,9 +65,7 @@ router.get("/dashboard", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // GET ALL USERS (with pagination & search)
-// ==========================================
 router.get("/users", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const { page = 1, limit = 10, search = "" } = req.query;
@@ -99,9 +95,7 @@ router.get("/users", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // UPDATE USER ROLE
-// ==========================================
 router.patch("/users/:id/role", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const { role } = req.body;
@@ -124,9 +118,7 @@ router.patch("/users/:id/role", auth, checkRole(ROLES.ADMIN), async (req, res) =
 });
 
 
-// ==========================================
 // DELETE USER
-// ==========================================
 router.delete("/users/:id", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -138,9 +130,7 @@ router.delete("/users/:id", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // GET ALL ORDERS (with pagination & filters)
-// ==========================================
 router.get("/orders", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const { page = 1, limit = 10, status, paymentStatus, search = "" } = req.query;
@@ -177,9 +167,7 @@ router.get("/orders", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // UPDATE ORDER STATUS
-// ==========================================
 router.patch("/orders/:id/status", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const { status } = req.body;
@@ -207,9 +195,7 @@ router.patch("/orders/:id/status", auth, checkRole(ROLES.ADMIN), async (req, res
 });
 
 
-// ==========================================
 // UPDATE PAYMENT STATUS
-// ==========================================
 router.patch("/orders/:id/payment", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const { status } = req.body;
@@ -233,9 +219,7 @@ router.patch("/orders/:id/payment", auth, checkRole(ROLES.ADMIN), async (req, re
 });
 
 
-// ==========================================
 // GET ALL JUICES (with pagination)
-// ==========================================
 router.get("/juices", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const { page = 1, limit = 10, category, search = "" } = req.query;
@@ -264,9 +248,7 @@ router.get("/juices", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // CREATE JUICE
-// ==========================================
 router.post("/juices", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const juiceData = req.body;
@@ -280,9 +262,7 @@ router.post("/juices", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // UPDATE JUICE
-// ==========================================
 router.patch("/juices/:id", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const juice = await Juice.findByIdAndUpdate(
@@ -298,9 +278,7 @@ router.patch("/juices/:id", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // DELETE JUICE
-// ==========================================
 router.delete("/juices/:id", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     await Juice.findByIdAndDelete(req.params.id);
@@ -312,9 +290,7 @@ router.delete("/juices/:id", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // GET ALL REVIEWS
-// ==========================================
 router.get("/reviews", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
@@ -341,9 +317,7 @@ router.get("/reviews", auth, checkRole(ROLES.ADMIN), async (req, res) => {
 });
 
 
-// ==========================================
 // DELETE REVIEW
-// ==========================================
 router.delete("/reviews/:id", auth, checkRole(ROLES.ADMIN), async (req, res) => {
   try {
     await Review.findByIdAndDelete(req.params.id);

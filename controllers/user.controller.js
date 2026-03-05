@@ -29,7 +29,6 @@ router.post("/register" , async(req , res)=>{
 })
 
 // ==================== LOGIN ====================
-// ==================== LOGIN ====================
 router.post("/login" , async(req , res)=>{
     try {
         const {email , password} = req.body
@@ -70,7 +69,6 @@ router.post("/logout", auth , async(req,res)=>{
     res.json({message:"Logged out successfully"})
 })
 
-// ==================== FORGOT PASSWORD ====================
 // ==================== FORGOT PASSWORD ====================
 router.post("/forgot-password", async (req, res) => {
   try {

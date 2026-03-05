@@ -9,7 +9,7 @@ const ROLES = require("../constants/roles.js");
 const router = express.Router();
 
 
-// ================= CREATE JUICE =================
+// create juice
 
 router.post(
   "/create",
@@ -18,31 +18,30 @@ router.post(
   upload.array("images", 6),
   async (req, res) => {
     try {
-      // 👇 IMPORTANT: Agar req.body.data hai to JSON parse karo
       let juiceData = req.body;
       
-      // Agar "data" field mein JSON bheja hai to use parse karo
+      // if data in json format parse it.
       if (req.body.data) {
         juiceData = JSON.parse(req.body.data);
       }
 
-      // Ab fields check karo
+      // check all fileds
       if (!juiceData.name || !juiceData.category || !juiceData.description || !juiceData.price) {
         return res.status(400).json({ 
           message: "All required fields must be filled",
-          received: juiceData // Debug ke liye
+          received: juiceData // Debug 
         });
       }
 
-      // Images handle karo
+      // handle image urls 
       const imageUrls = req.files ? req.files.map(file => file.path) : [];
 
-      // Agar ingredients string hai to parse karo
+      // if indegrients are string. then parse It
       if (juiceData.ingredients && typeof juiceData.ingredients === 'string') {
         juiceData.ingredients = JSON.parse(juiceData.ingredients);
       }
 
-      // Agar benefits string hai to parse karo
+      // if benifits string parse it.
       if (juiceData.benefits && typeof juiceData.benefits === 'string') {
         juiceData.benefits = JSON.parse(juiceData.benefits);
       }
@@ -75,7 +74,7 @@ router.post(
   }
 );
 
-// ================= GET ALL JUICES =================
+// get all juices
 router.get("/", async (req, res) => {
   try {
     const juices = await Juice.find().sort({ createdAt: -1 });
@@ -92,7 +91,7 @@ router.get("/", async (req, res) => {
 });
 
 
-// ================= SEARCH + FILTER + PAGINATION =================
+// search + filter + pagination
 router.get("/search/filter", async (req, res) => {
   try {
     const {
@@ -151,7 +150,7 @@ router.get("/search/filter", async (req, res) => {
 });
 
 
-// ================= GET SINGLE JUICE =================
+// get single juice
 router.get("/:id", async (req, res) => {
   try {
     const juice = await Juice.findById(req.params.id);
@@ -170,7 +169,7 @@ router.get("/:id", async (req, res) => {
 });
 
 
-// ================= UPDATE JUICE =================
+// update juice
 router.patch(
   "/:id",
   auth,
@@ -213,7 +212,7 @@ router.patch(
 );
 
 
-// ================= DELETE JUICE =================
+// delete juice
 router.delete(
   "/:id",
   auth,
