@@ -11,10 +11,14 @@ router.post("/add/:juiceId", auth, async (req, res) => {
     const juiceId = req.params.juiceId;
     const userId = req.user._id;
 
-    // check juice exists
+    // Check if juice exists
     const juice = await Juice.findById(juiceId);
-    if (!juice)
-      return res.status(404).json({ message: "Juice not found" });
+    if (!juice) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Juice not found" 
+      });
+    }
 
     // Find user's wishlist or create new one
     let wishlist = await Wishlist.findOne({ user: userId });
@@ -33,7 +37,8 @@ router.post("/add/:juiceId", auth, async (req, res) => {
 
       if (exists) {
         return res.status(400).json({ 
-          message: "Already in wishlist" 
+          success: false,
+          message: "Item already in wishlist" 
         });
       }
 
@@ -42,19 +47,31 @@ router.post("/add/:juiceId", auth, async (req, res) => {
     }
 
     await wishlist.save();
+    
+    // Populate the juice details
+    await wishlist.populate({
+      path: "items.juice",
+      model: "Juice"
+    });
 
     res.status(201).json({
+      success: true,
       message: "Added to wishlist",
-      wishlist
+      wishlist: wishlist.items,
+      count: wishlist.items.length
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Add to wishlist error:", err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 });
 
-// ================= REMOVE FROM WISHLIST =================
-router.delete("/:juiceId", auth, async (req, res) => {
+// ================= REMOVE SINGLE ITEM FROM WISHLIST =================
+router.delete("/item/:juiceId", auth, async (req, res) => {
   try {
     const juiceId = req.params.juiceId;
     const userId = req.user._id;
@@ -63,24 +80,46 @@ router.delete("/:juiceId", auth, async (req, res) => {
 
     if (!wishlist) {
       return res.status(404).json({ 
+        success: false,
         message: "Wishlist not found" 
       });
     }
 
-    // Remove juice from items array
+    // Filter out the juice to remove
+    const initialLength = wishlist.items.length;
     wishlist.items = wishlist.items.filter(
       item => item.juice.toString() !== juiceId
     );
 
+    // Check if anything was actually removed
+    if (initialLength === wishlist.items.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found in wishlist"
+      });
+    }
+
     await wishlist.save();
+    
+    // Populate before sending response
+    await wishlist.populate({
+      path: "items.juice",
+      model: "Juice"
+    });
 
     res.json({
+      success: true,
       message: "Removed from wishlist",
-      wishlist
+      wishlist: wishlist.items,
+      count: wishlist.items.length
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Remove from wishlist error:", err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 });
 
@@ -89,67 +128,67 @@ router.get("/", auth, async (req, res) => {
   try {
     const wishlist = await Wishlist.findOne({ 
       user: req.user._id 
-    }).populate("items.juice");
+    }).populate({
+      path: "items.juice",
+      model: "Juice"
+    });
 
     if (!wishlist) {
       return res.json({ 
+        success: true,
         count: 0, 
         wishlist: [] 
       });
     }
 
     res.json({
+      success: true,
       count: wishlist.items.length,
       wishlist: wishlist.items
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Get wishlist error:", err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 });
-
-
-
-// ================= REMOVE FROM WISHLIST =================
-router.delete("/:juiceId", auth, async (req, res) => {
-  try {
-    const removed = await Wishlist.findOneAndDelete({
-      user: req.user._id,
-      juice: req.params.juiceId
-    });
-
-    if (!removed)
-      return res.status(404).json({
-        message: "Item not found in wishlist"
-      });
-
-    res.json({
-      message: "Removed from wishlist"
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
 
 // ================= CLEAR FULL WISHLIST =================
 router.delete("/clear", auth, async (req, res) => {
   try {
-    await Wishlist.deleteMany({
-      user: req.user._id
-    });
+    const userId = req.user._id;
+
+    // Find the wishlist and clear all items
+    const wishlist = await Wishlist.findOne({ user: userId });
+
+    if (!wishlist) {
+      return res.status(404).json({
+        success: false,
+        message: "Wishlist not found"
+      });
+    }
+
+    // Clear the items array
+    wishlist.items = [];
+    await wishlist.save();
 
     res.json({
-      message: "Wishlist cleared"
+      success: true,
+      message: "Wishlist cleared successfully",
+      count: 0,
+      wishlist: []
     });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Clear wishlist error:", err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 });
-
-
 
 module.exports = router;
