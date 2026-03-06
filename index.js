@@ -19,40 +19,64 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(helmet())
 app.use(cors({
-    origin:process.env.FRONTEND_URL,
-    methods:["GET" , "PUT" , "PATCH" , "POST" , "DELETE"],
-    credentials:true
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "PUT", "PATCH", "POST", "DELETE"],
+    credentials: true
 }))
 
-
 // routes
-app.use("/users" ,userController)
-app.use("/juices" , juiceController)
-app.use("/cart" , cartController)
-app.use("/orders" , orderController)
-app.use("/reviews" , reviewController)
-app.use("/wishlists" , wishlistController)
-app.use("/admin" , adminController)
-app.use("/profile" , profileController)
-app.use("/payments"  , paymentController)
+app.use("/users", userController)
+app.use("/juices", juiceController)
+app.use("/cart", cartController)
+app.use("/orders", orderController)
+app.use("/reviews", reviewController)
+app.use("/wishlists", wishlistController)
+app.use("/admin", adminController)
+app.use("/profile", profileController)
+app.use("/payments", paymentController)
 
 // privateData
-app.get("/privateData" , auth , (req , res)=>{
+app.get("/privateData", auth, (req, res) => {
     res.send("privateData!")
 })
+
 // health Route
-app.get("/"  , (req , res)=>{
-    res.status(200).json({message:"connected!"})
+app.get("/", (req, res) => {
+    res.status(200).json({ message: "connected!" })
 })
 
+// Add health check for keep-alive (NEW - helps prevent cold starts)
+app.get("/health", (req, res) => {
+    res.status(200).json({ 
+        status: "OK", 
+        time: new Date().toISOString() 
+    })
+})
 
 // Route not found!
-app.use((req , res)=>{
-       res.status(404).json({message:"Page not found!"})
+app.use((req, res) => {
+    res.status(404).json({ message: "Page not found!" })
 })
 
-const PORT  = process.env.PORT
-app.listen(PORT , async()=>{
+const PORT = process.env.PORT || 5000
+
+// Modified server startup with keep-alive (UPDATED)
+app.listen(PORT, async () => {
     await connectDB()
-    console.log("server connected!")
+    console.log("✅ Server connected on port", PORT)
+    
+    // Keep-alive for Render (prevents cold starts)
+    if (process.env.NODE_ENV === 'production') {
+        console.log("⏰ Starting keep-alive service...")
+        setInterval(async () => {
+            try {
+                const fetch = (await import('node-fetch')).default
+                await fetch(`${process.env.BACKEND_URL || `http://localhost:${PORT}`}/health`)
+                console.log("🟢 Keep-alive ping sent at", new Date().toISOString())
+            } catch (err) {
+                console.log("🔴 Keep-alive failed:", err.message)
+            }
+        }, 10 * 60 * 1000) // 10 minutes
+    }
 })
+
