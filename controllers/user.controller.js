@@ -67,66 +67,64 @@ router.post("/logout", auth , async(req,res)=>{
     res.json({message:"Logged out successfully"})
 })
 
-// ==================== FORGOT PASSWORD - FIXED VERSION ====================
+// ==================== FORGOT PASSWORD - FINAL WORKING VERSION ====================
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ message: "Email is required" });
-    }
+    if (!email) return res.status(400).json({ message: "Email is required" });
 
     console.log("📨 Forgot password request for:", email);
 
-    // ⭐ IMMEDIATE RESPONSE - User ko turant reply do
+    // IMMEDIATE RESPONSE
     res.status(200).json({ 
       success: true,
-      message: "If an account exists with this email, you will receive a reset link shortly." 
+      message: "Password reset link bheja ja raha hai. 2 minute mein email check karo." 
     });
 
-    // ⭐ BACKGROUND ME EMAIL SEND KARO
+    // BACKGROUND PROCESS
     setTimeout(async () => {
       try {
-        // User find karo
+        // User find
         const user = await User.findOne({ email });
         if (!user) {
-          console.log("❌ User not found in database:", email);
+          console.log("❌ User not found:", email);
           return;
         }
 
-        console.log("✅ User found:", user.username);
-
-        // Generate reset token
+        // Token generate
         const resetToken = crypto.randomBytes(32).toString('hex');
         const hashedToken = crypto
           .createHash('sha256')
           .update(resetToken)
           .digest('hex');
 
-        // Save token to database
         user.resetToken = hashedToken;
-        user.resetTokenExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
+        user.resetTokenExpire = Date.now() + 15 * 60 * 1000;
         await user.save();
-
-        console.log("✅ Token saved for:", email);
 
         const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-        // ⭐⭐⭐ FIXED TRANSPORTER FOR RENDER ⭐⭐⭐
+        // ⭐⭐⭐ RENDER KE LIYE SPECIAL TRANSPORTER ⭐⭐⭐
+        console.log("📧 Creating transporter for Render...");
+        
         const transporter = nodemailer.createTransport({
           service: 'gmail',
           auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS
           },
-          // Render ke liye special settings
+          // Render ke liye extra options
           host: 'smtp.gmail.com',
           port: 465,
           secure: true,
           pool: true,
           maxConnections: 1,
-          connectionTimeout: 30000,
+          maxMessages: 5,
+          rateDelta: 20000,
+          rateLimit: 5,
+          connectionTimeout: 60000, // 60 seconds
           greetingTimeout: 30000,
-          socketTimeout: 30000,
+          socketTimeout: 60000,
           tls: {
             rejectUnauthorized: false,
             ciphers: 'SSLv3'
@@ -137,71 +135,45 @@ router.post("/forgot-password", async (req, res) => {
         const mailOptions = {
           from: `"JuiceShop" <${process.env.EMAIL_USER}>`,
           to: user.email,
-          subject: "🔐 Password Reset Request - JuiceShop",
+          subject: "🔐 Password Reset Link - JuiceShop",
           html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            </head>
-            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
-              <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
-                
-                <!-- Header -->
-                <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 30px; text-align: center;">
-                  <h1 style="color: white; margin: 0; font-size: 28px;">🍹 JuiceShop</h1>
-                  <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0;">Fresh juices delivered in 30 minutes</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f97316; border-radius: 10px;">
+              <div style="background: white; padding: 30px; border-radius: 10px;">
+                <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
+                <p>Hi <strong>${user.username}</strong>,</p>
+                <p>Click the button below to reset your password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${resetLink}" style="background: #f97316; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
                 </div>
-                
-                <!-- Content -->
-                <div style="padding: 40px 30px;">
-                  <h2 style="color: #333; margin-top: 0;">Password Reset Request</h2>
-                  <p style="color: #666; line-height: 1.6;">Hi <strong style="color: #f97316;">${user.username}</strong>,</p>
-                  <p style="color: #666; line-height: 1.6;">Click the button below to reset your password:</p>
-                  
-                  <div style="text-align: center; margin: 30px 0;">
-                    <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #f97316, #fb923c); color: white; padding: 14px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px; box-shadow: 0 5px 15px rgba(249, 115, 22, 0.3);">Reset Password</a>
-                  </div>
-                  
-                  <div style="background-color: #fff3e0; padding: 15px; border-radius: 10px; margin: 20px 0;">
-                    <p style="margin: 0; color: #f97316; font-size: 14px;">
-                      <strong>⏰ This link will expire in 15 minutes</strong>
-                    </p>
-                    <p style="margin: 5px 0 0; color: #666; font-size: 13px;">
-                      If you didn't request this, please ignore this email.
-                    </p>
-                  </div>
-                </div>
-                
-                <!-- Footer -->
-                <div style="background-color: #f8f8f8; padding: 20px; text-align: center; border-top: 1px solid #eee;">
-                  <p style="color: #999; margin: 0; font-size: 12px;">
-                    © 2024 JuiceShop. All rights reserved.
-                  </p>
-                </div>
+                <p><strong>⏰ This link will expire in 15 minutes.</strong></p>
+                <hr>
+                <p style="color: #666;">If you didn't request this, please ignore this email.</p>
               </div>
-            </body>
-            </html>
+            </div>
           `
         };
 
-        // Email send karo
         console.log("📧 Attempting to send email to:", email);
         const info = await transporter.sendMail(mailOptions);
         console.log("✅✅✅ EMAIL SENT SUCCESSFULLY TO:", email, info.response);
 
       } catch (err) {
         console.error("❌❌❌ BACKGROUND EMAIL ERROR:");
+        console.error("Error code:", err.code);
         console.error("Error message:", err.message);
         console.error("Full error:", err);
+        
+        // Extra debugging
+        if (err.code === 'ETIMEDOUT') {
+          console.log("⚠️ Render server Gmail se connect nahi ho pa raha. Alternative email service try karo.");
+        }
       }
-    }, 100); // 100ms delay
+    }, 500); // 500ms delay
 
   } catch (err) {
-    console.error("❌ Forgot password main error:", err);
+    console.error("❌ Forgot password error:", err);
     if (!res.headersSent) {
-      res.status(500).json({ message: "Error sending reset email", error: err.message });
+      res.status(500).json({ message: "Error sending reset email" });
     }
   }
 });
@@ -236,7 +208,7 @@ router.post("/reset-password/:token", async(req, res) => {
     user.resetTokenExpire = null;
     await user.save();
 
-    res.json({ message: "Password reset successful! You can now login with your new password." });
+    res.json({ message: "Password reset successful! You can now login." });
 
   } catch (err) {
     console.error("Reset password error:", err);
