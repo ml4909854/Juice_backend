@@ -9,39 +9,6 @@ const crypto = require("crypto")
 const nodemailer = require("nodemailer")
 const router = express.Router()
 
-
-let transporter;
-
-const getTransporter = () => {
-  if (transporter) return transporter;
-  
-  console.log("📧 Creating email transporter...");
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    },
-    pool: true,
-    maxConnections: 5,
-    rateDelta: 20000,
-    rateLimit: 5,
-    tls: { rejectUnauthorized: false }
-  });
-  
-  return transporter;
-};
-
-
-// ==================== HEALTH CHECK (for keep-alive) ====================
-router.get("/health", (req, res) => {
-  res.status(200).json({ 
-    status: "OK", 
-    time: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
-  });
-});
-
 // ==================== REGISTER ====================
 router.post("/register" , async(req , res)=>{
     try {
@@ -97,38 +64,36 @@ router.post("/login" , async(req , res)=>{
 router.post("/logout", auth , async(req,res)=>{
     const token = req.headers.authorization.split(" ")[1]
     blackList.add(token)
-
     res.json({message:"Logged out successfully"})
 })
 
-// ==================== FORGOT PASSWORD - OPTIMIZED FOR VERCEL ====================
+// ==================== FORGOT PASSWORD - FIXED VERSION ====================
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Email is required" 
-      });
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    console.log(`📨 Forgot password request for: ${email}`);
+    console.log("📨 Forgot password request for:", email);
 
-    // ⭐ RESPOND IMMEDIATELY - Don't wait for anything
+    // ⭐ IMMEDIATE RESPONSE - User ko turant reply do
     res.status(200).json({ 
       success: true,
       message: "If an account exists with this email, you will receive a reset link shortly." 
     });
 
-    // ⭐ PROCESS EVERYTHING IN BACKGROUND (after response is sent)
+    // ⭐ BACKGROUND ME EMAIL SEND KARO
     setTimeout(async () => {
       try {
-        // Find user
+        // User find karo
         const user = await User.findOne({ email });
         if (!user) {
-          console.log(`❌ No user found with email: ${email}`);
+          console.log("❌ User not found in database:", email);
           return;
         }
+
+        console.log("✅ User found:", user.username);
 
         // Generate reset token
         const resetToken = crypto.randomBytes(32).toString('hex');
@@ -137,52 +102,106 @@ router.post("/forgot-password", async (req, res) => {
           .update(resetToken)
           .digest('hex');
 
-        // Save to database
+        // Save token to database
         user.resetToken = hashedToken;
-        user.resetTokenExpire = Date.now() + 15 * 60 * 1000;
+        user.resetTokenExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
         await user.save();
+
+        console.log("✅ Token saved for:", email);
 
         const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
 
-        // Send email
+        // ⭐⭐⭐ FIXED TRANSPORTER FOR RENDER ⭐⭐⭐
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          },
+          // Render ke liye special settings
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
+          pool: true,
+          maxConnections: 1,
+          connectionTimeout: 30000,
+          greetingTimeout: 30000,
+          socketTimeout: 30000,
+          tls: {
+            rejectUnauthorized: false,
+            ciphers: 'SSLv3'
+          }
+        });
+
+        // Email content
         const mailOptions = {
           from: `"JuiceShop" <${process.env.EMAIL_USER}>`,
           to: user.email,
           subject: "🔐 Password Reset Request - JuiceShop",
           html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px;">
-              <div style="background: white; padding: 30px; border-radius: 10px;">
-                <h2 style="color: #333; text-align: center;">Password Reset Request</h2>
-                <p>Hi <strong>${user.username}</strong>,</p>
-                <p>Click the button below to reset your password:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${resetLink}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">Reset Password</a>
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            </head>
+            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px;">
+              <div style="max-width: 600px; margin: 0 auto; background-color: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 30px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 28px;">🍹 JuiceShop</h1>
+                  <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0;">Fresh juices delivered in 30 minutes</p>
                 </div>
-                <p style="color: #666; font-size: 14px;">This link will expire in 15 minutes.</p>
-                <hr>
-                <p style="color: #999; font-size: 12px;">If you didn't request this, please ignore this email.</p>
+                
+                <!-- Content -->
+                <div style="padding: 40px 30px;">
+                  <h2 style="color: #333; margin-top: 0;">Password Reset Request</h2>
+                  <p style="color: #666; line-height: 1.6;">Hi <strong style="color: #f97316;">${user.username}</strong>,</p>
+                  <p style="color: #666; line-height: 1.6;">Click the button below to reset your password:</p>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${resetLink}" style="display: inline-block; background: linear-gradient(135deg, #f97316, #fb923c); color: white; padding: 14px 40px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 16px; box-shadow: 0 5px 15px rgba(249, 115, 22, 0.3);">Reset Password</a>
+                  </div>
+                  
+                  <div style="background-color: #fff3e0; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                    <p style="margin: 0; color: #f97316; font-size: 14px;">
+                      <strong>⏰ This link will expire in 15 minutes</strong>
+                    </p>
+                    <p style="margin: 5px 0 0; color: #666; font-size: 13px;">
+                      If you didn't request this, please ignore this email.
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="background-color: #f8f8f8; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+                  <p style="color: #999; margin: 0; font-size: 12px;">
+                    © 2024 JuiceShop. All rights reserved.
+                  </p>
+                </div>
               </div>
-            </div>
+            </body>
+            </html>
           `
         };
 
-        const transporter = getTransporter();
-        await transporter.sendMail(mailOptions);
-        console.log(`✅ Password reset email sent to: ${email}`);
+        // Email send karo
+        console.log("📧 Attempting to send email to:", email);
+        const info = await transporter.sendMail(mailOptions);
+        console.log("✅✅✅ EMAIL SENT SUCCESSFULLY TO:", email, info.response);
 
-      } catch (error) {
-        console.error(`❌ Background email error for ${email}:`, error.message);
+      } catch (err) {
+        console.error("❌❌❌ BACKGROUND EMAIL ERROR:");
+        console.error("Error message:", err.message);
+        console.error("Full error:", err);
       }
-    }, 100); // Small delay to ensure response is sent
+    }, 100); // 100ms delay
 
   } catch (err) {
-    console.error("❌ Forgot password error:", err);
-    // If error occurs before response, send error
+    console.error("❌ Forgot password main error:", err);
     if (!res.headersSent) {
-      res.status(500).json({ 
-        success: false,
-        message: "Something went wrong. Please try again." 
-      });
+      res.status(500).json({ message: "Error sending reset email", error: err.message });
     }
   }
 });
@@ -192,13 +211,6 @@ router.post("/reset-password/:token", async(req, res) => {
   try {
     const { password } = req.body;
     const resetToken = req.params.token;
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({ 
-        success: false,
-        message: "Password must be at least 6 characters" 
-      });
-    }
 
     const hashedToken = crypto
       .createHash('sha256')
@@ -212,8 +224,7 @@ router.post("/reset-password/:token", async(req, res) => {
 
     if (!user) {
       return res.status(400).json({ 
-        success: false,
-        message: "Invalid or expired token" 
+        message: "Invalid or expired token. Please request a new password reset." 
       });
     }
 
@@ -225,33 +236,12 @@ router.post("/reset-password/:token", async(req, res) => {
     user.resetTokenExpire = null;
     await user.save();
 
-    // Send confirmation in background
-    setTimeout(async () => {
-      try {
-        const transporter = getTransporter();
-        await transporter.sendMail({
-          from: `"JuiceShop" <${process.env.EMAIL_USER}>`,
-          to: user.email,
-          subject: "✅ Password Reset Successful",
-          html: `<p>Your password has been reset successfully.</p>`
-        });
-      } catch (err) {
-        console.error("Confirmation email failed:", err.message);
-      }
-    }, 100);
-
-    res.json({ 
-      success: true,
-      message: "Password reset successful!" 
-    });
+    res.json({ message: "Password reset successful! You can now login with your new password." });
 
   } catch (err) {
-    console.error("❌ Reset password error:", err);
-    res.status(500).json({ 
-      success: false,
-      error: err.message 
-    });
+    console.error("Reset password error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-module.exports = router;
+module.exports = router
